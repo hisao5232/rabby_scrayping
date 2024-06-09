@@ -7,25 +7,28 @@ import pandas as pd
 
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()))
 
-url="https://rabbynet.zennichi.or.jp/agency/ibaraki/area"
-
-driver.get(url)
-time.sleep(2)
-
-#水戸市クリック
-driver.find_element(By.CSS_SELECTOR,"#__next > div.MuiContainer-root.MuiContainer-maxWidthMd.MuiContainer-disableGutters.css-u9s6t2 > main > div > div > form > div:nth-child(2) > div > div > ul > li:nth-child(1) > label > span.MuiButtonBase-root.MuiCheckbox-root.MuiCheckbox-colorPrimary.PrivateSwitchBase-root.MuiCheckbox-root.MuiCheckbox-colorPrimary.css-txm1df > input").click()
-
-#検索ボタンクリック
-driver.find_element(By.CSS_SELECTOR,"#__next > div.MuiContainer-root.MuiContainer-maxWidthMd.MuiContainer-disableGutters.css-u9s6t2 > main > div > div > form > div:nth-child(1) > button").click()
-time.sleep(2)
-
 #変数定義
 href_list=[]
 detail_list=[]
+url="https://rabbynet.zennichi.or.jp/agency/ibaraki/area"
 
-#詳細取得定義
-def get_detail():
+#トップページ表示
+driver.get(url)
+time.sleep(3)
 
+#市町村チェックボックの数取得
+check_boxes=driver.find_elements(By.NAME,"city_id:in")
+i=0
+for i in range(len(check_boxes)):
+    #チェックボックス１つクリック
+    check_boxes_t=driver.find_elements(By.NAME,"city_id:in")
+    check_boxes_t[i].click()
+    time.sleep(1)
+
+    #検索ボタンクリック
+    driver.find_element(By.CSS_SELECTOR,"#__next > div.MuiContainer-root.MuiContainer-maxWidthMd.MuiContainer-disableGutters.css-u9s6t2 > main > div > div > form > div:nth-child(1) > button").click()
+    time.sleep(3)
+    
     #1ページ目の各社のhref要素取得
     href_elems=driver.find_elements(By.CSS_SELECTOR,"h3>a.MuiTypography-root")
 
@@ -38,7 +41,8 @@ def get_detail():
     while True:
         try:
             driver.find_element(By.CSS_SELECTOR,"#__next > div.MuiContainer-root.MuiContainer-maxWidthMd.MuiContainer-disableGutters.css-u9s6t2 > main > div > div > div.MuiBox-root.css-0 > div > nav.MuiPagination-root.MuiPagination-text.css-fkxhek > ul > li:nth-child(6) > button").click()
-            time.sleep(2)
+            print("next_page")
+            time.sleep(3)
 
             #現在のページの各社のhref要素取得
             href_elems=driver.find_elements(By.CSS_SELECTOR,"h3>a.MuiTypography-root")
@@ -48,44 +52,37 @@ def get_detail():
                 href=href_elm.get_attribute("href")
                 href_list.append(href)
 
+        #次のページがない場合
         except:
             print("page_end")
             print(len(href_list))
             break
 
+    #トップページに戻る
+    driver.get(url)
+    time.sleep(3)
+
+#詳細取得
+for shop_href in href_list:
+    #会社詳細のページへ移動
+    driver.get(shop_href)
+    time.sleep(3)
+
     #詳細取得
-    for shop_href in href_list:
-        driver.get(shop_href)
-        time.sleep(3)
-
-        name=driver.find_element(By.CSS_SELECTOR,"div>h1").text
-        name=name.replace("\u3000"," ")
-        address=driver.find_element(By.XPATH,"//th[contains(text(), '住所')]/following-sibling::td[1]").text
-        address=address.replace("\u3000"," ")
-        tell=driver.find_element(By.CSS_SELECTOR,"p.css-1iosi0b").text
-        fax=driver.find_element(By.CSS_SELECTOR,"p.css-1aeu9lz").text
-        ceo=driver.find_element(By.XPATH,"//th[contains(text(), '代表者')]/following-sibling::td[1]").text
-        ceo=ceo.replace("\u3000"," ")
-        dict_detail={"会社名":name,"会社住所":address,"TELL番号":tell,"FAX番号":fax,"代表者名":ceo}
-        print(dict_detail)
-        detail_list.append(dict_detail)
-
-get_detail()
-
-#次のページへクリック
-while True:
-    try:
-        driver.find_element(By.CSS_SELECTOR,"#__next > div.MuiContainer-root.MuiContainer-maxWidthMd.MuiContainer-disableGutters.css-u9s6t2 > main > div > div > div.MuiBox-root.css-0 > div > nav.MuiPagination-root.MuiPagination-text.css-fkxhek > ul > li:nth-child(6) > button").click()
-        time.sleep(2)
-
-        #詳細取得
-        get_detail()
-        time.sleep(2)
-
-    except:
-        print("page_end")
-        break
-
-time.sleep(3)
+    name=driver.find_element(By.CSS_SELECTOR,"div>h1").text
+    name=name.replace("\u3000"," ")
+    address=driver.find_element(By.XPATH,"//th[contains(text(), '住所')]/following-sibling::td[1]").text
+    address=address.replace("\u3000"," ")
+    tell=driver.find_element(By.CSS_SELECTOR,"p.css-1iosi0b").text
+    fax=driver.find_element(By.CSS_SELECTOR,"p.css-1aeu9lz").text
+    ceo=driver.find_element(By.XPATH,"//th[contains(text(), '代表者')]/following-sibling::td[1]").text
+    ceo=ceo.replace("\u3000"," ")
+    dict_detail={"会社名":name,"会社住所":address,"TELL番号":tell,"FAX番号":fax,"代表者名":ceo}
+    print(dict_detail)
+    detail_list.append(dict_detail)
 
 driver.quit()
+
+#エクセル出力
+df=pd.DataFrame(detail_list)
+df.to_excel("rabby_ibaragi_deta.xlsx")
